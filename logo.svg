@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="ouro" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0d183"/>
+      <stop offset="1" stop-color="#b58f3c"/>
+    </linearGradient>
+    <linearGradient id="folha" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#2f9d76"/>
+      <stop offset="1" stop-color="#68e9b0"/>
+    </linearGradient>
+    <radialGradient id="fundo" cx=".5" cy=".38">
+      <stop offset="0" stop-color="#123040"/>
+      <stop offset="1" stop-color="#07131a"/>
+    </radialGradient>
+  </defs>
+
+  <!-- disco -->
+  <circle cx="256" cy="256" r="240" fill="url(#fundo)"/>
+  <circle cx="256" cy="256" r="240" fill="none" stroke="url(#ouro)" stroke-width="10"/>
+  <circle cx="256" cy="256" r="212" fill="none" stroke="#d8b45c" stroke-opacity=".28" stroke-width="2"/>
+
+  <!-- marcações do cronômetro -->
+  <g stroke="url(#ouro)" stroke-width="7" stroke-linecap="round">
+    <line x1="256" y1="40"  x2="256" y2="74"/>
+    <line x1="472" y1="256" x2="438" y2="256"/>
+    <line x1="256" y1="472" x2="256" y2="438"/>
+    <line x1="40"  y1="256" x2="74"  y2="256"/>
+  </g>
+  <g stroke="#d8b45c" stroke-opacity=".45" stroke-width="4" stroke-linecap="round">
+    <line x1="364" y1="53"  x2="350" y2="80"/>
+    <line x1="459" y1="148" x2="432" y2="162"/>
+    <line x1="459" y1="364" x2="432" y2="350"/>
+    <line x1="364" y1="459" x2="350" y2="432"/>
+    <line x1="148" y1="459" x2="162" y2="432"/>
+    <line x1="53"  y1="364" x2="80"  y2="350"/>
+    <line x1="53"  y1="148" x2="80"  y2="162"/>
+    <line x1="148" y1="53"  x2="162" y2="80"/>
+  </g>
+
+  <!-- folha-ponteiro: a lâmina aponta pro respawn -->
+  <path d="M256 300 C176 268 156 176 196 108 C284 128 316 208 296 288 Z" fill="url(#folha)"/>
+  <path d="M196 108 C232 176 246 236 256 300" fill="none" stroke="#07131a" stroke-opacity=".55" stroke-width="9" stroke-linecap="round"/>
+  <path d="M256 300 C336 268 356 176 316 108 C228 128 196 208 216 288 Z" fill="url(#folha)" opacity=".35"/>
+
+  <!-- eixo -->
+  <circle cx="256" cy="316" r="30" fill="url(#ouro)"/>
+  <circle cx="256" cy="316" r="14" fill="#07131a"/>
+
+  <!-- diff -->
+  <text x="256" y="418" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif"
+        font-size="72" font-weight="bold" fill="url(#ouro)" letter-spacing="6">DIFF</text>
+</svg>

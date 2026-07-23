@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Jungle Diff Timer</title>
+<style>
+:root{
+  --void:#07131a; --gold:#d8b45c; --gold-dim:#8a7440;
+  --ready:#4fd9a4; --warn:#f0a93b; --locked:#2c414c;
+  --ink:#e6f0f2; --ink-dim:#6f8d97;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden}
+body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+
+/* No navegador/celular o app ocupa a tela; no overlay ele é a janelinha. */
+#widget{
+  width:100%;height:100dvh;display:flex;flex-direction:column;gap:4px;
+  padding:6px;
+}
+#barra{display:flex;align-items:center;gap:8px;flex:none;
+  background:#07131ad9;border:1px solid #1c3542;border-radius:8px;padding:5px 9px}
+#marca{width:26px;height:26px;flex:none;filter:drop-shadow(0 0 4px #d8b45c33)}
+#relogio{font-family:Consolas,ui-monospace,monospace;font-size:19px;font-weight:700;
+  color:var(--gold);letter-spacing:1px;line-height:1}
+#relogio.off{color:var(--locked)}
+#estado{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--ink-dim)}
+.cresce{flex:1}
+button.mini{background:transparent;border:1px solid #2b4753;color:var(--ink-dim);
+  border-radius:5px;font-size:10px;padding:4px 7px;cursor:pointer;font-weight:600}
+button.mini.on{border-color:var(--gold);color:var(--gold)}
+
+#stage{position:relative;flex:1;aspect-ratio:1;margin:0 auto;max-width:100%}
+svg.map{position:absolute;inset:0;width:100%;height:100%;
+  border:1px solid #1c3542;border-radius:10px;background:#0a1a22e6}
+
+.node{position:absolute;transform:translate(-50%,-50%);width:12.5%;aspect-ratio:1;
+  border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border:1.5px solid var(--locked);background:#0b1c24d9;color:var(--locked);
+  font-family:Consolas,ui-monospace,monospace;padding:0;cursor:default;
+  transition:border-color .2s,color .2s,background .2s}
+.node .ic{font-size:clamp(9px,3.2vmin,17px);line-height:1;opacity:.3;transition:opacity .2s}
+.node .n{font-size:clamp(6px,1.9vmin,10px);font-weight:700;min-height:1em;line-height:1.1}
+.node.epic{width:11%}
+.node.enemy{width:10.5%;opacity:.5}
+#stage.meu .node.enemy{display:none}
+.node.up{border-color:var(--ready);color:var(--ready);background:#0d2a24e6;cursor:pointer;
+  box-shadow:0 0 10px #4fd9a433}
+.node.up .ic{opacity:1}
+.node.soon{border-color:var(--warn);color:var(--warn)}
+.node.soon .ic{opacity:.7}
+.node.pisca{animation:pisca 1.4s ease-in-out infinite}
+@keyframes pisca{0%,100%{box-shadow:0 0 0 0 #4fd9a400}50%{box-shadow:0 0 0 6px #4fd9a422}}
+
+#toast{position:absolute;left:50%;bottom:6px;transform:translate(-50%,10px);
+  background:var(--ready);color:#04140f;font-weight:700;font-size:11px;
+  padding:5px 12px;border-radius:4px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.warn{background:var(--warn);color:#1a1204}
+#dica{flex:none;font-size:9px;color:var(--ink-dim);text-align:center;line-height:1.4}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="widget">
+
+  <div id="barra" data-hover>
+    <svg id="marca" viewBox="0 0 512 512" aria-label="Jungle Diff Timer">
+      <defs>
+        <linearGradient id="ouro" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f0d183"/><stop offset="1" stop-color="#b58f3c"/>
+        </linearGradient>
+        <linearGradient id="folha" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#2f9d76"/><stop offset="1" stop-color="#68e9b0"/>
+        </linearGradient>
+      </defs>
+      <circle cx="256" cy="256" r="238" fill="#0b1d27" stroke="url(#ouro)" stroke-width="16"/>
+      <g stroke="url(#ouro)" stroke-width="20" stroke-linecap="round">
+        <line x1="256" y1="46" x2="256" y2="86"/><line x1="466" y1="256" x2="426" y2="256"/>
+        <line x1="256" y1="466" x2="256" y2="426"/><line x1="46" y1="256" x2="86" y2="256"/>
+      </g>
+      <path d="M256 300 C176 268 156 176 196 108 C284 128 316 208 296 288 Z" fill="url(#folha)"/>
+      <path d="M256 300 C336 268 356 176 316 108 C228 128 196 208 216 288 Z" fill="url(#folha)" opacity=".35"/>
+      <circle cx="256" cy="316" r="34" fill="url(#ouro)"/><circle cx="256" cy="316" r="15" fill="#07131a"/>
+    </svg>
+    <div>
+      <div id="relogio" class="off">00:00</div>
+      <div id="estado">aguardando partida</div>
+    </div>
+    <div class="cresce"></div>
+    <button class="mini" id="lado" data-hover>Meu lado</button>
+    <button class="mini" id="iniciar" data-hover>Iniciar</button>
+  </div>
+
+  <div id="stage" class="meu">
+    <svg class="map" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="riv" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1a4f60"/><stop offset=".5" stop-color="#2a7186"/><stop offset="1" stop-color="#1a4f60"/>
+        </linearGradient>
+        <radialGradient id="bb"><stop offset="0" stop-color="#3a86d6" stop-opacity=".5"/><stop offset="1" stop-color="#3a86d6" stop-opacity="0"/></radialGradient>
+        <radialGradient id="rb"><stop offset="0" stop-color="#d65a44" stop-opacity=".5"/><stop offset="1" stop-color="#d65a44" stop-opacity="0"/></radialGradient>
+      </defs>
+      <rect width="100" height="100" fill="#0a1a22"/>
+      <polygon points="10,4 46,4 4,46 4,10" fill="#0e2630"/>
+      <polygon points="96,54 96,90 90,96 54,96" fill="#0e2630"/>
+      <polygon points="16,20 44,48 20,72 12,64 12,28" fill="#102b33" opacity=".7"/>
+      <polygon points="84,80 56,52 80,28 88,36 88,72" fill="#102b33" opacity=".7"/>
+      <polygon points="0,14 86,100 100,86 14,0" fill="url(#riv)" opacity=".6"/>
+      <circle cx="32" cy="32" r="6.5" fill="#3a2452" opacity=".85"/>
+      <circle cx="68" cy="70" r="6.5" fill="#4a2118" opacity=".85"/>
+      <path d="M8 92 L8 12 Q8 8 12 8 L92 8" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M8 92 L88 92 Q92 92 92 88 L92 8" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M12 88 L88 12" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="6" cy="94" r="19" fill="url(#bb)"/>
+      <circle cx="94" cy="6" r="19" fill="url(#rb)"/>
+      <rect x=".5" y=".5" width="99" height="99" rx="4" fill="none" stroke="#d8b45c" stroke-opacity=".18"/>
+    </svg>
+    <div id="toast"></div>
+  </div>
+
+  <div id="dica">Toque ao limpar · segure 1s para desfazer</div>
+</div>
+
+<script>
+/* ── Tempos oficiais — Temporada 2026 ───────────────────────────
+   Campos normais 1º spawn 0:55 (Gromp/Krugs 1:07) · respawn 2:15
+   Buffs 0:55 · respawn 5:00 · Caranguejo 2:55 · respawn 2:35
+   Dragão 5:00 · respawn 5:00 · Grubs 6:00 → Arauto 15:00 → Barão 20:00 (6:00) */
+
+const NODES = [
+  {id:'bgromp',nome:'Gromp',   ic:'🐸',first:67, resp:135,x:13,y:30,lado:'meu'},
+  {id:'bblue', nome:'Blue',    ic:'🔵',first:55, resp:300,x:24,y:42,lado:'meu'},
+  {id:'bwolf', nome:'Lobos',   ic:'🐺',first:55, resp:135,x:34,y:56,lado:'meu'},
+  {id:'brapt', nome:'Galinhas',ic:'🐔',first:55, resp:135,x:46,y:66,lado:'meu'},
+  {id:'bred',  nome:'Red',     ic:'🔴',first:55, resp:300,x:56,y:76,lado:'meu'},
+  {id:'bkrug', nome:'Krugs',   ic:'🪨',first:67, resp:135,x:68,y:86,lado:'meu'},
+  {id:'sctop', nome:'Crab',    ic:'🦀',first:175,resp:155,x:20,y:20,lado:'rio'},
+  {id:'scbot', nome:'Crab',    ic:'🦀',first:175,resp:155,x:82,y:76,lado:'rio'},
+  {id:'rgromp',nome:'Gromp',   ic:'🐸',first:67, resp:135,x:87,y:70,lado:'inimigo'},
+  {id:'rblue', nome:'Blue',    ic:'🔵',first:55, resp:300,x:76,y:58,lado:'inimigo'},
+  {id:'rwolf', nome:'Lobos',   ic:'🐺',first:55, resp:135,x:66,y:44,lado:'inimigo'},
+  {id:'rrapt', nome:'Galinhas',ic:'🐔',first:55, resp:135,x:54,y:34,lado:'inimigo'},
+  {id:'rred',  nome:'Red',     ic:'🔴',first:55, resp:300,x:44,y:22,lado:'inimigo'},
+  {id:'rkrug', nome:'Krugs',   ic:'🪨',first:67, resp:135,x:32,y:12,lado:'inimigo'},
+  {id:'drake', nome:'Dragão',  ic:'🐉',first:300,resp:300,x:68,y:70,lado:'epic'},
+  {id:'pit',   nome:'Grubs',   ic:'🪱',first:360,resp:0,  x:32,y:32,lado:'epic'},
+];
+
+const stage=document.getElementById('stage'), relogio=document.getElementById('relogio'),
+      estado=document.getElementById('estado'), toast=document.getElementById('toast'),
+      btLado=document.getElementById('lado'), btIniciar=document.getElementById('iniciar');
+
+const noOverlay = typeof window.lol !== 'undefined';
+let t0=null;          // início manual (modo navegador)
+let tempoLol=null;    // tempo vindo da Riot (modo overlay)
+let S={};
+const agora = () => tempoLol!==null ? tempoLol : (t0 ? (Date.now()-t0)/1000 : 0);
+const ativo = () => tempoLol!==null || t0!==null;
+
+/* som */
+let ac;
+function tone(f,d,v,tp){try{
+  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+  if(ac.state==='suspended')ac.resume();
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=tp||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,ac.currentTime);
+  g.gain.linearRampToValueAtTime(v,ac.currentTime+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);
+  o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d);
+}catch(e){}}
+const somAviso =()=>tone(620,.11,.1,'triangle');
+const somNasceu=()=>{tone(784,.12,.13);setTimeout(()=>tone(1046,.2,.13),110);};
+const somEpico =()=>{tone(392,.18,.14,'sawtooth');setTimeout(()=>tone(523,.28,.12,'sawtooth'),150);};
+const somClique=()=>tone(340,.06,.07,'square');
+
+function aviso(m,w){toast.textContent=m;toast.className='show'+(w?' warn':'');
+  clearTimeout(aviso._t);aviso._t=setTimeout(()=>toast.className='',2300);}
+const mmss=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+
+function fasePit(t){
+  if(t<900)  return {nome:'Grubs', ic:'🪱'};
+  if(t<1200) return {nome:'Arauto',ic:'👁️'};
+  return {nome:'Barão',ic:'🐍'};
+}
+
+/* deixa o mouse "entrar" na janela só em cima dos elementos clicáveis */
+function ligarHover(el){
+  if(!noOverlay)return;
+  el.addEventListener('pointerenter',()=>window.lol.capturarMouse(true));
+  el.addEventListener('pointerleave',()=>window.lol.capturarMouse(false));
+}
+document.querySelectorAll('[data-hover]').forEach(ligarHover);
+
+NODES.forEach(c=>{
+  const el=document.createElement('button');
+  el.className='node'+(c.lado==='inimigo'?' enemy':'')+(c.lado==='epic'?' epic':'');
+  el.style.left=c.x+'%';el.style.top=c.y+'%';
+  el.setAttribute('aria-label',c.nome);
+  el.innerHTML=`<span class="ic">${c.ic}</span><span class="n"></span>`;
+  stage.appendChild(el);ligarHover(el);
+  S[c.id]={pronto:c.first,avisou:false,anunciou:false,ultimo:null,mortes:0,el};
+
+  let hold;
+  const abater=()=>{
+    if(!ativo())return;
+    const s=S[c.id],t=agora();
+    if(t<s.pronto)return;
+    s.ultimo=t;s.mortes++;
+    if(c.id==='pit'){const f=fasePit(t);
+      s.pronto = f.nome==='Barão' ? t+360 : (f.nome==='Grubs'?900:1200);
+    } else s.pronto=t+c.resp;
+    s.avisou=false;s.anunciou=false;somClique();
+  };
+  const desfazer=()=>{const s=S[c.id];if(s.ultimo===null)return;
+    s.pronto=s.ultimo;s.ultimo=null;s.mortes=Math.max(0,s.mortes-1);
+    s.avisou=true;s.anunciou=true;aviso('Desfeito',true);};
+  el.addEventListener('pointerdown',()=>{hold=setTimeout(()=>{hold=null;desfazer();},900);});
+  el.addEventListener('pointerup',()=>{if(hold){clearTimeout(hold);hold=null;abater();}});
+  el.addEventListener('pointercancel',()=>{clearTimeout(hold);hold=null;});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();desfazer();});
+});
+
+function zerar(){NODES.forEach(c=>{const s=S[c.id];
+  s.pronto=c.first;s.avisou=false;s.anunciou=false;s.ultimo=null;s.mortes=0;});}
+
+btIniciar.addEventListener('click',()=>{
+  t0=Date.now();tempoLol=null;zerar();
+  estado.textContent='cronômetro manual';relogio.classList.remove('off');
+  aviso('Partida iniciada');tone(523,.12,.13);
+  if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
+});
+btLado.addEventListener('click',()=>{
+  const m=stage.classList.toggle('meu');
+  btLado.textContent=m?'Meu lado':'Mapa todo';
+});
+
+/* ── sincronia automática com o jogo (só no overlay) ── */
+const epicosVistos=new Set();
+if(noOverlay){
+  window.lol.aoReceberDados(d=>{
+    if(tempoLol===null){zerar();estado.textContent='sincronizado com o jogo';
+      relogio.classList.remove('off');aviso('Partida detectada');}
+    tempoLol=d.tempo;t0=null;
+
+    d.eventos.forEach(ev=>{
+      const chave=ev.EventID+'-'+ev.EventName;
+      if(epicosVistos.has(chave))return;
+      epicosVistos.add(chave);
+      const t=ev.EventTime;
+      if(ev.EventName==='DragonKill'){
+        const s=S.drake;s.ultimo=t;s.mortes++;s.pronto=t+300;s.avisou=false;s.anunciou=false;
+      }
+      if(ev.EventName==='HordeKill'||ev.EventName==='HeraldKill'||ev.EventName==='BaronKill'){
+        const s=S.pit;s.ultimo=t;s.mortes++;
+        s.pronto = ev.EventName==='BaronKill' ? t+360 : (ev.EventName==='HordeKill'?900:1200);
+        s.avisou=false;s.anunciou=false;
+      }
+    });
+  });
+  window.lol.aoTerminar(()=>{tempoLol=null;t0=null;zerar();
+    estado.textContent='aguardando partida';relogio.classList.add('off');});
+  window.lol.aoZerar(()=>{zerar();aviso('Timers zerados',true);});
+  window.lol.aoTravar(travado=>{
+    document.getElementById('dica').textContent =
+      travado ? 'Travado · Ctrl+Shift+L para mover' : 'Solto · arraste pela barra do topo';
+  });
+
+  /* arrastar pela barra quando destravado */
+  let arrastando=false,px=0,py=0;
+  const barra=document.getElementById('barra');
+  barra.addEventListener('pointerdown',e=>{arrastando=true;px=e.screenX;py=e.screenY;});
+  window.addEventListener('pointermove',e=>{
+    if(!arrastando)return;
+    window.lol.mover(e.screenX-px,e.screenY-py);px=e.screenX;py=e.screenY;});
+  window.addEventListener('pointerup',()=>arrastando=false);
+}
+
+function loop(){
+  const t=agora();
+  relogio.textContent=ativo()?mmss(t):'00:00';
+
+  NODES.forEach(c=>{
+    const s=S[c.id],el=s.el,lbl=el.querySelector('.n'),ico=el.querySelector('.ic');
+    let nome=c.nome;
+    if(c.id==='pit'&&ativo()){const f=fasePit(t);nome=f.nome;ico.textContent=f.ic;}
+    if(c.id==='drake'&&s.mortes>=4)nome='Ancião';
+
+    el.classList.remove('up','soon','pisca');
+    if(!ativo()){lbl.textContent='';return;}
+
+    const falta=s.pronto-t;
+    if(falta>0){
+      lbl.textContent=mmss(falta);
+      if(falta<=10){el.classList.add('soon');
+        if(!s.avisou){s.avisou=true;somAviso();aviso(`${c.ic} ${nome} em 10s`,true);}}
+    }else{
+      lbl.textContent=nome;el.classList.add('up');
+      if(!s.anunciou){s.anunciou=true;el.classList.add('pisca');
+        c.lado==='epic'?somEpico():somNasceu();
+        aviso(`${c.ic} ${nome} disponível`);
+        setTimeout(()=>el.classList.remove('pisca'),6000);}
+    }
+  });
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
