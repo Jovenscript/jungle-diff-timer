@@ -16,7 +16,7 @@
   },
   "build": {
     "appId": "com.mhtdev.jungledifftimer",
-    "files": ["main.js", "preload.js", "app/**/*"],
+    "files": ["main.js", "preload.js", "app/**/*", "build/icon.png"],
     "directories": { "buildResources": "build" },
     "win": {
       "icon": "build/icon.ico",

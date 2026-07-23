@@ -1,4 +1,4 @@
-const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen, Tray, Menu, nativeImage } = require('electron');
 const https = require('https');
 const path = require('path');
 
@@ -47,10 +47,10 @@ function criarJanela() {
   const { width } = screen.getPrimaryDisplay().workAreaSize;
 
   win = new BrowserWindow({
-    width: 300,
-    height: 340,
-    x: width - 330,
-    y: 90,
+    width: 430,
+    height: 500,
+    x: width - 460,
+    y: 80,
     frame: false,
     transparent: true,
     resizable: false,
@@ -85,8 +85,27 @@ ipcMain.on('janela:mover', (_e, { dx, dy }) => {
   win.setPosition(Math.round(x + dx), Math.round(y + dy));
 });
 
+ipcMain.on('app:fechar', () => app.quit());
+
+/* ---------- Ícone na bandeja (perto do relógio do Windows) ---------- */
+let tray = null;
+
+function criarBandeja() {
+  const img = nativeImage.createFromPath(path.join(__dirname, 'build', 'icon.png'));
+  tray = new Tray(img.isEmpty() ? nativeImage.createEmpty() : img.resize({ width: 16, height: 16 }));
+  tray.setToolTip('Jungle Diff Timer');
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: 'Mostrar / esconder', click: () => { visivel = !visivel; visivel ? win.showInactive() : win.hide(); } },
+    { label: 'Reiniciar partida',  click: () => win.webContents.send('ui:zerar') },
+    { type: 'separator' },
+    { label: 'Sair', click: () => app.quit() }
+  ]));
+  tray.on('click', () => { visivel = !visivel; visivel ? win.showInactive() : win.hide(); });
+}
+
 app.whenReady().then(() => {
   criarJanela();
+  criarBandeja();
 
   // Ctrl+Shift+J → mostra/esconde
   globalShortcut.register('CommandOrControl+Shift+J', () => {

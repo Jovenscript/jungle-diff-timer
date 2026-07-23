@@ -6,5 +6,6 @@ contextBridge.exposeInMainWorld('lol', {
   aoTravar: (fn) => ipcRenderer.on('ui:travado', (_e, v) => fn(v)),
   aoZerar: (fn) => ipcRenderer.on('ui:zerar', () => fn()),
   capturarMouse: (v) => ipcRenderer.send('mouse:capturar', v),
-  mover: (dx, dy) => ipcRenderer.send('janela:mover', { dx, dy })
+  mover: (dx, dy) => ipcRenderer.send('janela:mover', { dx, dy }),
+  fechar: () => ipcRenderer.send('app:fechar')
 });

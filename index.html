@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>Jungle Diff Timer</title>
+<style>
+:root{
+  --void:#07131a; --gold:#d8b45c; --ready:#4fd9a4; --warn:#f0a93b;
+  --apagado:#3b525e; --ink:#e6f0f2; --ink-dim:#7d9aa4;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+html,body{margin:0;height:100%;background:transparent;overflow:hidden}
+body{font-family:"Segoe UI",system-ui,sans-serif;color:var(--ink)}
+
+#widget{width:100%;height:100dvh;display:flex;flex-direction:column;gap:6px;padding:7px}
+
+#barra{display:flex;align-items:center;gap:9px;flex:none;
+  background:linear-gradient(180deg,#0d222dee,#07131aee);
+  border:1px solid #24404d;border-radius:9px;padding:6px 8px 6px 10px;
+  box-shadow:0 2px 14px #0009}
+#marca{width:30px;height:30px;flex:none;filter:drop-shadow(0 0 5px #d8b45c40)}
+#relogio{font-family:Consolas,ui-monospace,monospace;font-size:22px;font-weight:700;
+  color:var(--gold);letter-spacing:1px;line-height:1.05}
+#relogio.off{color:var(--apagado)}
+#estado{font-size:9px;letter-spacing:1.6px;text-transform:uppercase;color:var(--ink-dim)}
+.cresce{flex:1}
+button.mini{background:#0b1e28;border:1px solid #2b4753;color:var(--ink-dim);
+  border-radius:6px;font-size:11px;padding:6px 9px;cursor:pointer;font-weight:600;
+  display:flex;align-items:center;gap:5px;transition:border-color .15s,color .15s}
+button.mini:hover{border-color:var(--gold);color:var(--gold)}
+button.mini.perigo:hover{border-color:#e0644f;color:#e0644f}
+button.mini svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+
+#stage{position:relative;flex:1;aspect-ratio:1;margin:0 auto;max-width:100%;max-height:100%}
+svg.map{position:absolute;inset:0;width:100%;height:100%;
+  border:1px solid #24404d;border-radius:11px;background:#0a1a22f2;
+  box-shadow:0 3px 18px #000a}
+
+.node{position:absolute;transform:translate(-50%,-50%);width:13.5%;aspect-ratio:1;
+  border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1px;border:1.8px solid var(--apagado);background:#0a1a23e6;color:var(--apagado);
+  font-family:Consolas,ui-monospace,monospace;padding:0;cursor:default;
+  transition:border-color .2s,color .2s,background .2s,transform .15s}
+.node .ic{width:46%;height:46%;color:var(--apagado);opacity:.45;transition:color .25s,opacity .25s}
+.node .n{font-size:clamp(6px,2vmin,11px);font-weight:700;min-height:1em;line-height:1.1}
+.node.epic{width:12%}
+.node.enemy{width:11.5%;opacity:.5}
+#stage.meu .node.enemy{display:none}
+
+.node.up{border-color:var(--ready);color:var(--ready);background:#0c2a24f2;cursor:pointer;
+  box-shadow:0 0 12px #4fd9a43d}
+.node.up .ic{color:var(--acc,var(--ready));opacity:1}
+.node.up:hover{transform:translate(-50%,-50%) scale(1.09)}
+.node.soon{border-color:var(--warn);color:var(--warn)}
+.node.soon .ic{color:var(--warn);opacity:.85}
+.node.pisca{animation:pisca 1.3s ease-in-out infinite}
+@keyframes pisca{0%,100%{box-shadow:0 0 0 0 #4fd9a400}50%{box-shadow:0 0 0 9px #4fd9a426}}
+
+#toast{position:absolute;left:50%;bottom:8px;transform:translate(-50%,10px);
+  background:var(--ready);color:#04140f;font-weight:700;font-size:12px;
+  padding:6px 14px;border-radius:5px;opacity:0;pointer-events:none;
+  transition:opacity .2s,transform .2s;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+#toast.warn{background:var(--warn);color:#1a1204}
+#toast.obj{background:linear-gradient(180deg,#f0d183,#c99e45);color:#1a1204;
+  font-size:13px;padding:8px 18px;box-shadow:0 0 18px #d8b45c66}
+#dica{flex:none;font-size:9px;color:var(--ink-dim);text-align:center;line-height:1.4}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ─── Ícones originais dos campos ─── -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="i-gromp" viewBox="0 0 24 24">
+    <ellipse cx="12" cy="15.5" rx="9.5" ry="6.5" fill="currentColor"/>
+    <circle cx="7.5" cy="8" r="3.4" fill="currentColor"/><circle cx="16.5" cy="8" r="3.4" fill="currentColor"/>
+    <circle cx="7.5" cy="8" r="1.3" fill="#0a1a23"/><circle cx="16.5" cy="8" r="1.3" fill="#0a1a23"/>
+    <path d="M7 16h10" stroke="#0a1a23" stroke-width="1.6" stroke-linecap="round"/>
+  </symbol>
+  <symbol id="i-blue" viewBox="0 0 24 24">
+    <polygon points="12,1.5 17.5,9 12,22.5 6.5,9" fill="currentColor"/>
+    <polygon points="4,10 7,7.5 7.5,16 4.5,14" fill="currentColor" opacity=".65"/>
+    <polygon points="20,10 17,7.5 16.5,16 19.5,14" fill="currentColor" opacity=".65"/>
+  </symbol>
+  <symbol id="i-wolf" viewBox="0 0 24 24">
+    <path d="M2.5 3.5 8 9h8l5.5-5.5V12l-9.5 9.5L2.5 12Z" fill="currentColor"/>
+    <circle cx="8.6" cy="12.4" r="1.35" fill="#0a1a23"/><circle cx="15.4" cy="12.4" r="1.35" fill="#0a1a23"/>
+  </symbol>
+  <symbol id="i-rapt" viewBox="0 0 24 24">
+    <path d="M3 10.5 11 4l3.5 5.5L22 12l-7.5 1.5L11 21 8 14Z" fill="currentColor"/>
+    <circle cx="11.2" cy="9.6" r="1.25" fill="#0a1a23"/>
+  </symbol>
+  <symbol id="i-red" viewBox="0 0 24 24">
+    <path d="M12 22C4.5 18 3 10.5 5 4l3.5 5L12 3l3.5 6L19 4c2 6.5.5 14-7 18Z" fill="currentColor"/>
+    <path d="M12 18.5c-3-2-3.5-5.5-2.5-8.5L12 13l2.5-3c1 3 .5 6.5-2.5 8.5Z" fill="#0a1a23" opacity=".55"/>
+  </symbol>
+  <symbol id="i-krug" viewBox="0 0 24 24">
+    <polygon points="2.5,21 6.5,8 13,6 17,12 14.5,21" fill="currentColor"/>
+    <polygon points="14.5,21 17.5,13.5 21.5,17 21.5,21" fill="currentColor" opacity=".7"/>
+    <path d="M6.5 8 11 13l-2 8" stroke="#0a1a23" stroke-width="1.3" fill="none" stroke-linejoin="round"/>
+  </symbol>
+  <symbol id="i-crab" viewBox="0 0 24 24">
+    <ellipse cx="12" cy="14.5" rx="7.5" ry="5.5" fill="currentColor"/>
+    <path d="M4.5 9.5 2 6M19.5 9.5 22 6M5 19l-2.5 3M19 19l2.5 3" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/>
+    <circle cx="4" cy="7.5" r="2.6" fill="currentColor"/><circle cx="20" cy="7.5" r="2.6" fill="currentColor"/>
+    <circle cx="9.5" cy="13" r="1.2" fill="#0a1a23"/><circle cx="14.5" cy="13" r="1.2" fill="#0a1a23"/>
+  </symbol>
+  <symbol id="i-drake" viewBox="0 0 24 24">
+    <path d="M1.5 8 9 4.5l3 4.5 10-3.5-4 8.5-6 8-4.5-7Z" fill="currentColor"/>
+    <circle cx="9.4" cy="8.4" r="1.2" fill="#0a1a23"/>
+  </symbol>
+  <symbol id="i-grub" viewBox="0 0 24 24">
+    <path d="M3 18c2-6 5-2 7-6s5-6 8-4" stroke="currentColor" stroke-width="4" fill="none"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="18.5" cy="7.5" r="1.4" fill="#0a1a23"/>
+  </symbol>
+  <symbol id="i-herald" viewBox="0 0 24 24">
+    <path d="M1.5 12C5.5 5 18.5 5 22.5 12c-4 7-17 7-21 0Z" fill="currentColor"/>
+    <circle cx="12" cy="12" r="4.2" fill="#0a1a23"/><circle cx="12" cy="12" r="1.9" fill="currentColor"/>
+  </symbol>
+  <symbol id="i-baron" viewBox="0 0 24 24">
+    <path d="M12 1.5 19 6v7.5L12 22.5 5 13.5V6Z" fill="currentColor"/>
+    <path d="M8.5 13.5 12 20l3.5-6.5Z" fill="#0a1a23"/>
+    <circle cx="9.2" cy="9" r="1.5" fill="#0a1a23"/><circle cx="14.8" cy="9" r="1.5" fill="#0a1a23"/>
+  </symbol>
+</defs></svg>
+
+<div id="widget">
+
+  <div id="barra" data-hover>
+    <svg id="marca" viewBox="0 0 512 512" aria-label="Jungle Diff Timer">
+      <defs>
+        <linearGradient id="ouro" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f0d183"/><stop offset="1" stop-color="#b58f3c"/>
+        </linearGradient>
+        <linearGradient id="folha" x1="0" y1="1" x2="1" y2="0">
+          <stop offset="0" stop-color="#2f9d76"/><stop offset="1" stop-color="#68e9b0"/>
+        </linearGradient>
+      </defs>
+      <circle cx="256" cy="256" r="238" fill="#0b1d27" stroke="url(#ouro)" stroke-width="16"/>
+      <g stroke="url(#ouro)" stroke-width="20" stroke-linecap="round">
+        <line x1="256" y1="46" x2="256" y2="86"/><line x1="466" y1="256" x2="426" y2="256"/>
+        <line x1="256" y1="466" x2="256" y2="426"/><line x1="46" y1="256" x2="86" y2="256"/>
+      </g>
+      <path d="M256 300 C176 268 156 176 196 108 C284 128 316 208 296 288 Z" fill="url(#folha)"/>
+      <path d="M256 300 C336 268 356 176 316 108 C228 128 196 208 216 288 Z" fill="url(#folha)" opacity=".35"/>
+      <circle cx="256" cy="316" r="34" fill="url(#ouro)"/><circle cx="256" cy="316" r="15" fill="#07131a"/>
+    </svg>
+    <div>
+      <div id="relogio" class="off">00:00</div>
+      <div id="estado">aguardando partida</div>
+    </div>
+    <div class="cresce"></div>
+    <button class="mini" id="lado" data-hover title="Mostrar a selva inimiga">Meu lado</button>
+    <button class="mini" id="reiniciar" data-hover title="Reiniciar partida (Ctrl+Shift+R)">
+      <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+    </button>
+    <button class="mini perigo" id="fechar" data-hover title="Fechar o Jungle Diff Timer">
+      <svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5L5 19"/></svg>
+    </button>
+  </div>
+
+  <div id="stage" class="meu">
+    <svg class="map" viewBox="0 0 100 100" aria-hidden="true">
+      <defs>
+        <linearGradient id="riv" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#1a4f60"/><stop offset=".5" stop-color="#2d7c93"/><stop offset="1" stop-color="#1a4f60"/>
+        </linearGradient>
+        <radialGradient id="bb"><stop offset="0" stop-color="#3a86d6" stop-opacity=".55"/><stop offset="1" stop-color="#3a86d6" stop-opacity="0"/></radialGradient>
+        <radialGradient id="rb"><stop offset="0" stop-color="#d65a44" stop-opacity=".55"/><stop offset="1" stop-color="#d65a44" stop-opacity="0"/></radialGradient>
+        <radialGradient id="mata" cx=".5" cy=".5"><stop offset="0" stop-color="#163a3a"/><stop offset="1" stop-color="#0d2630"/></radialGradient>
+      </defs>
+      <rect width="100" height="100" fill="#0a1a22"/>
+      <polygon points="10,4 46,4 4,46 4,10" fill="url(#mata)"/>
+      <polygon points="96,54 96,90 90,96 54,96" fill="url(#mata)"/>
+      <polygon points="16,20 44,48 20,72 12,64 12,28" fill="#113038" opacity=".75"/>
+      <polygon points="84,80 56,52 80,28 88,36 88,72" fill="#113038" opacity=".75"/>
+      <polygon points="0,14 86,100 100,86 14,0" fill="url(#riv)" opacity=".6"/>
+      <circle cx="32" cy="32" r="7" fill="#3d2657" opacity=".9"/>
+      <circle cx="68" cy="70" r="7" fill="#52241a" opacity=".9"/>
+      <path d="M8 92 L8 12 Q8 8 12 8 L92 8" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M8 92 L88 92 Q92 92 92 88 L92 8" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M12 88 L88 12" stroke="#c9b98a" stroke-opacity=".26" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <circle cx="6" cy="94" r="20" fill="url(#bb)"/>
+      <circle cx="94" cy="6" r="20" fill="url(#rb)"/>
+      <rect x=".5" y=".5" width="99" height="99" rx="4" fill="none" stroke="#d8b45c" stroke-opacity=".2"/>
+    </svg>
+    <div id="toast"></div>
+  </div>
+
+  <div id="dica">Clique ao limpar · segure 1s para desfazer</div>
+</div>
+
+<script>
+/* ── Tempos oficiais — Temporada 2026 ───────────────────────────
+   Campos normais 1º spawn 0:55 (Gromp/Krugs 1:07) · respawn 2:15
+   Buffs 0:55 · respawn 5:00 · Caranguejo 2:55 · respawn 2:35
+   Dragão 5:00 · respawn 5:00 · Grubs 6:00 → Arauto 15:00 → Barão 20:00 (6:00) */
+
+const NODES = [
+  {id:'bgromp',nome:'Gromp',   ico:'i-gromp',cor:'#7fd46a',first:67, resp:135,x:13,y:30,lado:'meu'},
+  {id:'bblue', nome:'Blue',    ico:'i-blue', cor:'#5aa8f0',first:55, resp:300,x:24,y:42,lado:'meu'},
+  {id:'bwolf', nome:'Lobos',   ico:'i-wolf', cor:'#b9c6d4',first:55, resp:135,x:34,y:56,lado:'meu'},
+  {id:'brapt', nome:'Galinhas',ico:'i-rapt', cor:'#e8944f',first:55, resp:135,x:46,y:66,lado:'meu'},
+  {id:'bred',  nome:'Red',     ico:'i-red',  cor:'#e35b47',first:55, resp:300,x:56,y:76,lado:'meu'},
+  {id:'bkrug', nome:'Krugs',   ico:'i-krug', cor:'#a89078',first:67, resp:135,x:68,y:86,lado:'meu'},
+  {id:'sctop', nome:'Crab',    ico:'i-crab', cor:'#4fd0d9',first:175,resp:155,x:20,y:20,lado:'rio'},
+  {id:'scbot', nome:'Crab',    ico:'i-crab', cor:'#4fd0d9',first:175,resp:155,x:82,y:76,lado:'rio'},
+  {id:'rgromp',nome:'Gromp',   ico:'i-gromp',cor:'#7fd46a',first:67, resp:135,x:87,y:70,lado:'inimigo'},
+  {id:'rblue', nome:'Blue',    ico:'i-blue', cor:'#5aa8f0',first:55, resp:300,x:76,y:58,lado:'inimigo'},
+  {id:'rwolf', nome:'Lobos',   ico:'i-wolf', cor:'#b9c6d4',first:55, resp:135,x:66,y:44,lado:'inimigo'},
+  {id:'rrapt', nome:'Galinhas',ico:'i-rapt', cor:'#e8944f',first:55, resp:135,x:54,y:34,lado:'inimigo'},
+  {id:'rred',  nome:'Red',     ico:'i-red',  cor:'#e35b47',first:55, resp:300,x:44,y:22,lado:'inimigo'},
+  {id:'rkrug', nome:'Krugs',   ico:'i-krug', cor:'#a89078',first:67, resp:135,x:32,y:12,lado:'inimigo'},
+  {id:'drake', nome:'Dragão',  ico:'i-drake',cor:'#e0713f',first:300,resp:300,x:68,y:70,lado:'epic'},
+  {id:'pit',   nome:'Grubs',   ico:'i-grub', cor:'#a56ce0',first:360,resp:0,  x:32,y:32,lado:'epic'},
+];
+
+const stage=document.getElementById('stage'), relogio=document.getElementById('relogio'),
+      estado=document.getElementById('estado'), toast=document.getElementById('toast'),
+      btLado=document.getElementById('lado'), btReiniciar=document.getElementById('reiniciar'),
+      btFechar=document.getElementById('fechar');
+
+const noOverlay = typeof window.lol !== 'undefined';
+if(!noOverlay) btFechar.style.display='none';   // no navegador não faz sentido
+
+let t0=null, tempoLol=null, S={};
+const agora = () => tempoLol!==null ? tempoLol : (t0 ? (Date.now()-t0)/1000 : 0);
+const ativo = () => tempoLol!==null || t0!==null;
+
+/* som — provisório, será trocado pelas vozes gravadas */
+let ac;
+function tone(f,d,v,tp){try{
+  ac=ac||new (window.AudioContext||window.webkitAudioContext)();
+  if(ac.state==='suspended')ac.resume();
+  const o=ac.createOscillator(),g=ac.createGain();
+  o.type=tp||'sine';o.frequency.value=f;
+  g.gain.setValueAtTime(0,ac.currentTime);
+  g.gain.linearRampToValueAtTime(v,ac.currentTime+.015);
+  g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);
+  o.connect(g).connect(ac.destination);o.start();o.stop(ac.currentTime+d);
+}catch(e){}}
+/* Antecedência dos avisos de objetivo épico, em segundos:
+   OBJ_PREP  = recall + compra (dispara "recall e compre")
+   OBJ_SAIDA = caminhada média base→cova (~30s com botas T1) → "vá agora"
+   Ajuste aqui se sentir que chega cedo ou tarde demais. */
+const OBJ_PREP=60, OBJ_SAIDA=35;
+
+const somAviso =()=>tone(620,.11,.1,'triangle');
+const somNasceu=()=>{tone(784,.12,.13);setTimeout(()=>tone(1046,.2,.13),110);};
+const somEpico =()=>{tone(392,.18,.14,'sawtooth');setTimeout(()=>tone(523,.28,.12,'sawtooth'),150);};
+const somClique=()=>tone(340,.06,.07,'square');
+const somObjetivo=()=>{tone(294,.2,.15,'sawtooth');setTimeout(()=>tone(392,.3,.13,'sawtooth'),180);};
+
+function aviso(m,cls){toast.textContent=m;toast.className='show'+(cls?' '+cls:'');
+  clearTimeout(aviso._t);aviso._t=setTimeout(()=>toast.className='',cls==='obj'?4200:2300);}
+const mmss=s=>Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+
+function fasePit(t){
+  if(t<900)  return {nome:'Grubs', ico:'i-grub',  cor:'#a56ce0'};
+  if(t<1200) return {nome:'Arauto',ico:'i-herald',cor:'#c95ad6'};
+  return {nome:'Barão',ico:'i-baron',cor:'#8b5ae0'};
+}
+
+function ligarHover(el){
+  if(!noOverlay)return;
+  el.addEventListener('pointerenter',()=>window.lol.capturarMouse(true));
+  el.addEventListener('pointerleave',()=>window.lol.capturarMouse(false));
+}
+document.querySelectorAll('[data-hover]').forEach(ligarHover);
+
+NODES.forEach(c=>{
+  const el=document.createElement('button');
+  el.className='node'+(c.lado==='inimigo'?' enemy':'')+(c.lado==='epic'?' epic':'');
+  el.style.left=c.x+'%';el.style.top=c.y+'%';el.style.setProperty('--acc',c.cor);
+  el.setAttribute('aria-label',c.nome);
+  el.innerHTML='<svg class="ic"><use href="#'+c.ico+'"/></svg><span class="n"></span>';
+  stage.appendChild(el);ligarHover(el);
+  S[c.id]={pronto:c.first,avisou:false,anunciou:false,prep:false,saida:false,ultimo:null,mortes:0,el};
+
+  let hold;
+  const abater=()=>{
+    if(!ativo())return;
+    const s=S[c.id],t=agora();
+    if(t<s.pronto)return;
+    s.ultimo=t;s.mortes++;
+    if(c.id==='pit'){const f=fasePit(t);
+      s.pronto = f.nome==='Barão' ? t+360 : (f.nome==='Grubs'?900:1200);
+    } else s.pronto=t+c.resp;
+    s.avisou=false;s.anunciou=false;s.prep=false;s.saida=false;somClique();
+  };
+  const desfazer=()=>{const s=S[c.id];if(s.ultimo===null)return;
+    s.pronto=s.ultimo;s.ultimo=null;s.mortes=Math.max(0,s.mortes-1);
+    s.avisou=true;s.anunciou=true;aviso('Desfeito','warn');};
+  el.addEventListener('pointerdown',()=>{hold=setTimeout(function(){hold=null;desfazer();},900);});
+  el.addEventListener('pointerup',()=>{if(hold){clearTimeout(hold);hold=null;abater();}});
+  el.addEventListener('pointercancel',()=>{clearTimeout(hold);hold=null;});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();desfazer();});
+});
+
+function zerar(){NODES.forEach(c=>{const s=S[c.id];
+  s.pronto=c.first;s.avisou=false;s.anunciou=false;s.prep=false;s.saida=false;s.ultimo=null;s.mortes=0;});}
+
+btReiniciar.addEventListener('click',()=>{
+  zerar();
+  if(tempoLol===null){t0=Date.now();estado.textContent='cronômetro manual';}
+  relogio.classList.remove('off');
+  aviso('Partida reiniciada');tone(523,.12,.13);
+  if(navigator.wakeLock)navigator.wakeLock.request('screen').catch(()=>{});
+});
+btLado.addEventListener('click',()=>{
+  const m=stage.classList.toggle('meu');
+  btLado.textContent=m?'Meu lado':'Mapa todo';
+});
+btFechar.addEventListener('click',()=>{if(noOverlay)window.lol.fechar();});
+
+/* ── sincronia automática com o jogo (só no overlay) ── */
+const epicosVistos=new Set();
+if(noOverlay){
+  window.lol.aoReceberDados(d=>{
+    if(tempoLol===null){zerar();estado.textContent='sincronizado com o jogo';
+      relogio.classList.remove('off');aviso('Partida detectada');}
+    tempoLol=d.tempo;t0=null;
+    d.eventos.forEach(ev=>{
+      const chave=ev.EventID+'-'+ev.EventName;
+      if(epicosVistos.has(chave))return;
+      epicosVistos.add(chave);
+      const t=ev.EventTime;
+      if(ev.EventName==='DragonKill'){
+        const s=S.drake;s.ultimo=t;s.mortes++;s.pronto=t+300;
+        s.avisou=false;s.anunciou=false;s.prep=false;s.saida=false;
+      }
+      if(ev.EventName==='HordeKill'||ev.EventName==='HeraldKill'||ev.EventName==='BaronKill'){
+        const s=S.pit;s.ultimo=t;s.mortes++;
+        s.pronto = ev.EventName==='BaronKill' ? t+360 : (ev.EventName==='HordeKill'?900:1200);
+        s.avisou=false;s.anunciou=false;s.prep=false;s.saida=false;
+      }
+    });
+  });
+  window.lol.aoTerminar(()=>{tempoLol=null;t0=null;zerar();epicosVistos.clear();
+    estado.textContent='aguardando partida';relogio.classList.add('off');});
+  window.lol.aoZerar(()=>{zerar();epicosVistos.clear();aviso('Timers zerados','warn');});
+  window.lol.aoTravar(travado=>{
+    document.getElementById('dica').textContent =
+      travado ? 'Travado · Ctrl+Shift+L para mover' : 'Solto · arraste pela barra do topo';
+  });
+
+  let arrastando=false,px=0,py=0;
+  const barra=document.getElementById('barra');
+  barra.addEventListener('pointerdown',e=>{
+    if(e.target.closest('button'))return;
+    arrastando=true;px=e.screenX;py=e.screenY;});
+  window.addEventListener('pointermove',e=>{
+    if(!arrastando)return;
+    window.lol.mover(e.screenX-px,e.screenY-py);px=e.screenX;py=e.screenY;});
+  window.addEventListener('pointerup',()=>arrastando=false);
+}
+
+function loop(){
+  const t=agora();
+  relogio.textContent=ativo()?mmss(t):'00:00';
+
+  NODES.forEach(c=>{
+    const s=S[c.id],el=s.el,lbl=el.querySelector('.n'),uso=el.querySelector('use');
+    let nome=c.nome;
+    if(c.id==='pit'&&ativo()){const f=fasePit(t);
+      nome=f.nome;uso.setAttribute('href','#'+f.ico);el.style.setProperty('--acc',f.cor);}
+    if(c.id==='drake'&&s.mortes>=4)nome='Ancião';
+
+    el.classList.remove('up','soon','pisca');
+    if(!ativo()){lbl.textContent='';return;}
+
+    const falta=s.pronto-t;
+    if(falta>0){
+      lbl.textContent=mmss(falta);
+      if(c.lado==='epic'){
+        if(falta<=OBJ_PREP&&falta>OBJ_SAIDA&&!s.prep){s.prep=true;somObjetivo();
+          aviso(nome+' em '+mmss(falta)+' — recall e compre','obj');}
+        if(falta<=OBJ_SAIDA&&!s.saida){s.saida=true;somObjetivo();
+          aviso('Vá para o '+nome+' agora','obj');}
+      }
+      if(falta<=10){el.classList.add('soon');
+        if(!s.avisou){s.avisou=true;somAviso();aviso(nome+' em 10s','warn');}}
+    }else{
+      lbl.textContent=nome;el.classList.add('up');
+      if(!s.anunciou){s.anunciou=true;el.classList.add('pisca');
+        c.lado==='epic'?somEpico():somNasceu();
+        aviso(nome+' disponível');
+        setTimeout(()=>el.classList.remove('pisca'),6000);}
+    }
+  });
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
